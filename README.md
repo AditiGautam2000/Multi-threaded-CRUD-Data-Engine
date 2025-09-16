@@ -14,7 +14,7 @@ Uses a custom JDBC connection pool (SimpleConnectionPool) to manage MySQL connec
 
 Delegates actual DB queries to modular CRUD handler classes: Create, Read, Update, Delete.
 
-Performance highlight 🚀
+Performance highlight 
 
 When processing 40,000+ SQL queries sequentially, the runtime was:
 
@@ -109,3 +109,4 @@ Graceful shutdown with executor.awaitTermination().
 Unit tests with in-memory DB (H2) or Testcontainers.
 
 Use a production-grade connection pool (e.g., HikariCP).
+
