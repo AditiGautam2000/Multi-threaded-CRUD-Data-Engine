@@ -13,7 +13,7 @@
 
 ---
 
-## Performance highlight 🚀
+## Performance highlight 
 When processing **40,000+ SQL queries sequentially**, the runtime was:  
 - **~9 minutes 8 seconds** with direct connections (no pooling).  
 - **~58 seconds** using this system with **custom `SimpleConnectionPool` + `ExecutorService`**, while ensuring that:  
@@ -94,3 +94,4 @@ java BakeryCSVProcessor3
 
 ## License
 MIT / Apache-2.0 (choose one and add a LICENSE file).
+
