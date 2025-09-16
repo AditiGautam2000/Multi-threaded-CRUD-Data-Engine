@@ -1,29 +1,111 @@
-## Getting Started
+Multi-threaded CSV-driven CRUD Processor
 
-Welcome to the VS Code Java world. Here is a guideline to help you get started to write Java code in Visual Studio Code.
+One-line: A per-user, queue-based, multi-threaded Java system that executes Create / Read / Update / Delete (CRUD) operations from a CSV file into a MySQL database using a lightweight JDBC connection pool.
 
-## Folder Structure
+What this project does
 
-The workspace contains two folders by default, where:
+Reads an operations CSV.
 
-- `src`: the folder to maintain sources
-- `lib`: the folder to maintain dependencies
+Groups rows by user ID so that each user’s operations remain in sequence.
 
-Meanwhile, the compiled output files will be generated in the `bin` folder by default.
+Runs different users’ operations concurrently using a fixed-size thread pool (ExecutorService).
 
-> If you want to customize the folder structure, open `.vscode/settings.json` and update the related settings there.
+Uses a custom JDBC connection pool (SimpleConnectionPool) to manage MySQL connections efficiently.
 
-## Dependency Management
+Delegates actual DB queries to modular CRUD handler classes: Create, Read, Update, Delete.
 
-The `JAVA PROJECTS` view allows you to manage your dependencies. More details can be found [here](https://github.com/microsoft/vscode-java-dependency#manage-dependencies).
+Performance highlight 🚀
+
+When processing 40,000+ SQL queries sequentially, the runtime was:
+
+~9 minutes 8 seconds with direct connections (no pooling).
+
+~58 seconds using this system with custom SimpleConnectionPool + ExecutorService, while ensuring that:
+
+SQL connections were never exhausted (pool limits respected).
+
+Concurrency was safe and isolated (per-user queues).
+
+Project structure
+
+PerUserQueueProcessor.java (currently named BakeryCSVProcessor3.java)
+Main coordinator: parses CSV, builds per-user queues, submits workers to thread pool, calls CRUD handlers.
+
+SimpleConnectionPool.java
+Lightweight JDBC connection pool with configurable size and timeout.
+
+Createtable.java
+Utility for creating the required MySQL schema.
+
+Create.java / Read.java / Update.java / Delete.java
+Modular classes implementing the four CRUD actions.
+
+How it works
+
+Parse CSV → Reads header → builds HEADER_MAP → parses each row.
+
+Group by user → Each user ID gets a BlockingQueue<Runnable>.
+
+Worker assignment → For each user, submits a worker to a fixed thread pool. Each worker drains that user’s queue sequentially.
+
+CRUD execution → Worker gets a connection from SimpleConnectionPool, runs the CRUD operation, then releases the connection.
+
+Shutdown → Closes all connections gracefully in a JVM shutdown hook.
+
+This guarantees:
+
+Sequential operations per user
+
+Concurrent execution across users
+
+Bounded DB resource usage with pooling
+
+Expected CSV schema
+
+The processor expects headers with these fields:
+
+Operation, UserID, FullName, Email, PhoneNumber, VisitCount, TotalSpent, Choice, NewValue
 
 
-without multithreading:  for 60k queries
-767712.150 ms -> 13 mins
+Operation → Create | Read | Update | Delete
 
-with multithreading:
-3276 ms
+UserID → integer (key for per-user queue)
 
-threadpool:
-2070.855
+FullName, Email, PhoneNumber → user attributes
 
+VisitCount, TotalSpent → numeric fields
+
+Choice + NewValue → used by Update to determine field and new value
+
+Setup
+Prerequisites
+
+Java 8+
+
+MySQL running locally or remotely
+
+mysql-connector-java on classpath
+
+Steps
+# Compile
+javac *.java
+
+# Run table setup
+java CreateTable
+
+# Run processor (expects ./operations.csv)
+java BakeryCSVProcessor3
+
+Improvements to consider
+
+Rename BakeryCSVProcessor3 → PerUserQueueProcessor (for clarity).
+
+Externalize DB credentials (currently hardcoded).
+
+Add CSV validation & error handling.
+
+Graceful shutdown with executor.awaitTermination().
+
+Unit tests with in-memory DB (H2) or Testcontainers.
+
+Use a production-grade connection pool (e.g., HikariCP).
